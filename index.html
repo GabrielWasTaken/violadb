@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Viola DB: Música de viola</title>
+  <script>
+    // --- CONFIGURACIÓN ---
+    const GITHUB_USER = "GabrielWasTaken"; // <-- reemplázalo
+    const REPO_NAME = "violadb";         // <-- reemplázalo
+    const BRANCH = "main"; // o "master", según tu repositorio
+
+    // --- CAMBIO DE MODO ---
+    function cambiarModo() {
+      const body = document.body;
+      const tema = body.dataset.tema === "oscuro" ? "claro" : "oscuro";
+      body.dataset.tema = tema;
+      localStorage.setItem("tema", tema);
+    }
+
+    // --- INICIO ---
+    window.onload = function() {
+      document.body.dataset.tema = localStorage.getItem("tema") || "claro";
+      cargarBaseDeDatos();
+    };
+
+    // --- BÚSQUEDA ---
+    function buscarObras() {
+      const entrada = document.getElementById("busqueda").value.toLowerCase();
+      const obras = document.querySelectorAll(".obra");
+      obras.forEach(o => {
+        const texto = o.textContent.toLowerCase();
+        o.style.display = texto.includes(entrada) ? "" : "none";
+      });
+    }
+
+    // --- CARGAR BASE DE DATOS DINÁMICAMENTE ---
+    async function cargarBaseDeDatos() {
+      const apiURL = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/Scores`;
+      const lista = document.getElementById("listaObras");
+      lista.innerHTML = "<li>Cargando obras...</li>";
+
+      try {
+        const respuesta = await fetch(apiURL);
+        const compositores = await respuesta.json();
+        lista.innerHTML = "";
+
+        for (const compositor of compositores) {
+          if (compositor.type === "dir") {
+            const nombreComp = compositor.name;
+            const compURL = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/Scores/${nombreComp}`;
+            const compResp = await fetch(compURL);
+            const archivos = await compResp.json();
+
+            for (const archivo of archivos) {
+              if (archivo.name.toLowerCase().endsWith(".pdf")) {
+                const ruta = `Scores/${nombreComp}/${archivo.name}`;
+                const li = document.createElement("li");
+                li.className = "obra";
+                li.innerHTML = `<strong>${nombreComp}</strong> – <a href="${ruta}" target="_blank">${archivo.name.replace(/_/g, " ").replace(".pdf", "")}</a>`;
+                lista.appendChild(li);
+              }
+            }
+          }
+        }
+
+        if (!lista.innerHTML.trim()) {
+          lista.innerHTML = "<li>No se encontraron obras.</li>";
+        }
+
+      } catch (error) {
+        lista.innerHTML = "<li>Error al cargar la base de datos. Consulta la consola para más detalles.</li>";
+        console.error(error);
+      }
+    }
+
+    // --- CAMBIO AUTOMÁTICO DE COLOR DE FONDO ---
+    const observador = new MutationObserver(() => {
+      const tema = document.body.dataset.tema;
+      document.body.style.background = tema === "oscuro" ? "#111" : "#fff";
+      document.body.style.color = tema === "oscuro" ? "#eee" : "#000";
+    });
+    observador.observe(document.body, { attributes: true, attributeFilter: ["data-tema"] });
+  </script>
+</head>
+
+<body data-tema="claro">
+  <h1>🎻 Base de Datos de Obras para Viola</h1>
+
+  <!-- Menú -->
+  <nav>
+    <button onclick="document.getElementById('acerca').scrollIntoView()">Acerca de</button>
+    <button onclick="document.getElementById('base').scrollIntoView()">Base de datos</button>
+    <button onclick="document.getElementById('contacto').scrollIntoView()">Contacto</button>
+    <button onclick="cambiarModo()">Cambiar modo claro/oscuro</button>
+  </nav>
+
+  <hr>
+
+  <!-- Acerca de -->
+  <section id="acerca">
+    <h2>Acerca de</h2>
+    <p>Este sitio recopila obras para viola y sus partituras en formato PDF.  
+    Todas las partituras se almacenan localmente en la carpeta <code>Scores/</code> de este repositorio, organizadas por compositor.</p>
+  </section>
+
+  <hr>
+
+  <!-- Búsqueda -->
+  <section>
+    <h2>Búsqueda</h2>
+    <input type="text" id="busqueda" onkeyup="buscarObras()" placeholder="Buscar por obra o compositor...">
+  </section>
+
+  <hr>
+
+  <!-- Base de datos -->
+  <section id="base">
+    <h2>Base de datos</h2>
+    <ul id="listaObras">
+      <li>Cargando...</li>
+    </ul>
+  </section>
+
+  <hr>
+
+  <!-- Contacto -->
+  <section id="contacto">
+    <h2>Contacto</h2>
+    <p>¿Tienes sugerencias, problemas o deseas colaborar? Escríbenos:</p>
+
+    <!-- Formulario con mailto -->
+    <form action="mailto:contacto@violadb.com" method="post" enctype="text/plain">
+      <label for="nombre">Nombre:</label><br>
+      <input type="text" id="nombre" name="Nombre" required><br><br>
+
+      <label for="correo">Correo electrónico:</label><br>
+      <input type="email" id="correo" name="Correo" required><br><br>
+
+      <label for="asunto">Asunto:</label><br>
+      <input type="text" id="asunto" name="Asunto" placeholder="Ej. Solicitud de partitura" required><br><br>
+
+      <label for="mensaje">Mensaje:</label><br>
+      <textarea id="mensaje" name="Mensaje" rows="6" cols="40" placeholder="Escribe tu mensaje aquí..." required></textarea><br><br>
+
+      <input type="submit" value="Enviar correo">
+      <input type="reset" value="Limpiar">
+    </form>
+
+    <br>
+    <p>También puedes escribir directamente a <a href="mailto:contacto@violadb.com">contacto@violamusica.com</a> para:</p>
+    <ul>
+      <li>Solicitar nuevas funciones o características.</li>
+      <li>Reportar errores o problemas del sitio.</li>
+      <li>Solicitar partituras específicas.</li>
+      <li>Enviar partituras que desees compartir.</li>
+      <li>Donar al proyecto mediante PayPal al correo: <strong>paypal@violadb.com</strong>.</li>
+    </ul>
+    <p>Tu apoyo ayuda a mantener este sitio libre, colaborativo y en constante crecimiento.</p>
+  </section>
+</body>
+</html>
